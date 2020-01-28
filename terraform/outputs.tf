@@ -17,7 +17,7 @@ output "availability_zones" {
   value = ["${module.dev_vpc.azs}"]
 }
 
-// Needed for kops
+/// Needed for kops
 
 output "kubernetes_cluster_name" {
   value = "${var.CLUSTER_NAME}"
