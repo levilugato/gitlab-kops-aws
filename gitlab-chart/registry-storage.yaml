@@ -1,0 +1,7 @@
+s3:
+  bucket: gitlab-registry-storage-yourcompanhy-prod
+  accesskey: aws_access_key
+  secretkey: aws_secret_key
+  region: us-east-2
+  # regionendpoint: "https://minio.example.com:9000"
+  v4auth: true

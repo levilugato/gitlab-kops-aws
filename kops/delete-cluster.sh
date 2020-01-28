@@ -1,0 +1,1 @@
+export TF_OUTPUT=$(cd ../terraform && terraform output -json) && export KOPS_STATE_STORE="s3://$(echo ${TF_OUTPUT} | jq -r .kops_state_store.value)" && export CLUSTER_NAME="$(echo ${TF_OUTPUT} | jq -r .kubernetes_cluster_name.value)" && kops delete cluster --name $CLUSTER_NAME --yes

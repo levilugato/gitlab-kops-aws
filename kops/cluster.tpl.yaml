@@ -1,0 +1,562 @@
+apiVersion: kops.k8s.io/v1alpha2
+kind: Cluster
+metadata:
+  creationTimestamp: null
+  name: ${CLUSTER_NAME}
+spec:
+  additionalPolicies:
+    master: |
+      [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:DescribeAutoScalingInstances",
+                "autoscaling:DescribeTags",
+                "autoscaling:SetDesiredCapacity",
+                "autoscaling:TerminateInstanceInAutoScalingGroup"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "route53:ListHostedZonesByName",
+            "Resource": "*"
+        }
+      ]
+    node: |
+      [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:GetRepositoryPolicy",
+                "ecr:DescribeRepositories",
+                "ecr:ListImages",
+                "ecr:BatchGetImage",
+                "ecr:InitiateLayerUpload",
+                "ecr:UploadLayerPart",
+                "ecr:CompleteLayerUpload",
+                "ecr:PutImage",
+                "support:*",
+                "cloudfront:Get*",
+                "cloudfront:List*",
+                "cloudsearch:Describe*",
+                "cloudsearch:List*",
+                "cloudsearch:search",
+                "cloudwatch:Describe*",
+                "cloudwatch:Get*",
+                "cloudwatch:List*",
+                "cloudformation:Describe*",
+                "cloudfront:List*",
+                "cloudsearch:Describe*",
+                "cloudwatch:PutMetricData",
+                "datapipeline:DescribeObjects",
+                "datapipeline:DescribePipelines",
+                "datapipeline:GetPipelineDefinition",
+                "datapipeline:ListPipelines",
+                "datapipeline:QueryObjects",
+                "dynamodb:BatchGetItem",
+                "dynamodb:DescribeTable",
+                "dynamodb:GetItem",
+                "dynamodb:ListTables",
+                "dynamodb:PutItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:DescribeReservedCapacity",
+                "dynamodb:DescribeReservedCapacityOfferings",
+                "dynamodb:ListTagsOfResource",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:UpdateItem",
+                "ec2:Describe*",
+                "ec2:DescribeHosts",
+                "ec2:describeIdentityIdFormat",
+                "ec2:DescribeIdFormat",
+                "ec2:DescribeInstanceAttribute",
+                "ec2:DescribeNatGateways",
+                "ec2:DescribeReservedInstancesModifications",
+                "ec2:DescribeTags",
+                "ec2:GetFlowLogsCount",
+                "autoscaling:Describe*",
+                "elasticloadbalancing:Describe*",
+                "elasticache:Describe*",
+                "elasticache:List*",
+                "firehose:Describe*",
+                "firehose:List*",
+                "iam:ListRoles",
+                "kinesisanalytics:DescribeApplication",
+                "kinesisanalytics:DiscoverInputSchema",
+                "kinesisanalytics:GetApplicationState",
+                "kinesisanalytics:ListApplications",
+                "kinesis:Describe*",
+                "kinesis:Get*",
+                "kinesis:List*",
+                "lambda:List*",
+                "lambda:Get*",
+                "logs:Describe*",
+                "logs:Get*",
+                "logs:TestMetricFilter",
+                "logs:FilterLogEvents",
+                "mobileanalytics:Get*",
+                "mobileanalytics:Put*",
+                "rds:Describe*",
+                "rds:ListTagsForResource",
+                "rds:DownloadCompleteDBLogFile",
+                "rds:DownloadDBLogFilePortion",
+                "redshift:Describe*",
+                "redshift:ViewQueriesInConsole",
+                "route53:Get*",
+                "route53:List*",
+                "route53:TestDNSAnswer",
+                "ses:ListTemplates",
+                "ses:SendEmail",
+                "ses:SendTemplatedEmail",
+                "ses:SendRawEmail",
+                "sns:Get*",
+                "sns:List*",
+                "sns:Publish",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ListQueues",
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage",
+                "sqs:DeleteMessageBatch",
+                "sqs:ChangeMessageVisibility",
+                "sqs:Send*",
+                "s3:Get*",
+                "s3:PutObject",
+                "s3:List*",
+                "apigateway:GET",
+                "apigateway:HEAD",
+                "apigateway:OPTIONS"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": "sts:AssumeRole",
+            "Resource": [
+                "arn:aws:iam::563718358426:role/dev-sagemaker-sandbox"
+            ]
+        }
+      ]
+  fileAssets:
+  - name: kubernetes-audit-policy-file
+    path: /srv/kubernetes/audit.yaml
+    roles: [Master]
+    content: |
+      ---
+      apiVersion: audit.k8s.io/v1beta1
+      kind: Policy
+      rules:
+        # The following requests were manually identified as high-volume and low-risk,
+        # so drop them.
+        - level: None
+          resources:
+            - group: ""
+              resources:
+                - endpoints
+                - services
+                - services/status
+          users:
+            - 'system:kube-proxy'
+          verbs:
+            - watch
+
+        - level: None
+          resources:
+            - group: ""
+              resources:
+                - nodes
+                - nodes/status
+          userGroups:
+            - 'system:nodes'
+          verbs:
+            - get
+
+        - level: None
+          namespaces:
+            - kube-system
+          resources:
+            - group: ""
+              resources:
+                - endpoints
+          users:
+            - 'system:kube-controller-manager'
+            - 'system:kube-scheduler'
+            - 'system:serviceaccount:kube-system:endpoint-controller'
+          verbs:
+            - get
+            - update
+
+        - level: None
+          resources:
+            - group: ""
+              resources:
+                - namespaces
+                - namespaces/status
+                - namespaces/finalize
+          users:
+            - 'system:apiserver'
+          verbs:
+            - get
+
+        # Don't log HPA fetching metrics.
+        - level: None
+          resources:
+            - group: metrics.k8s.io
+          users:
+            - 'system:kube-controller-manager'
+          verbs:
+            - get
+            - list
+
+        # Don't log these read-only URLs.
+        - level: None
+          nonResourceURLs:
+            - '/healthz*'
+            - /version
+            - '/swagger*'
+
+        # Don't log events requests.
+        - level: None
+          resources:
+            - group: ""
+              resources:
+                - events
+
+        # node and pod status calls from nodes are high-volume and can be large, don't log responses for expected updates from nodes
+        - level: Request
+          omitStages:
+            - RequestReceived
+          resources:
+            - group: ""
+              resources:
+                - nodes/status
+                - pods/status
+          users:
+            - kubelet
+            - 'system:node-problem-detector'
+            - 'system:serviceaccount:kube-system:node-problem-detector'
+          verbs:
+            - update
+            - patch
+
+        - level: Request
+          omitStages:
+            - RequestReceived
+          resources:
+            - group: ""
+              resources:
+                - nodes/status
+                - pods/status
+          userGroups:
+            - 'system:nodes'
+          verbs:
+            - update
+            - patch
+
+        # deletecollection calls can be large, don't log responses for expected namespace deletions
+        - level: Request
+          omitStages:
+            - RequestReceived
+          users:
+            - 'system:serviceaccount:kube-system:namespace-controller'
+          verbs:
+            - deletecollection
+
+        # Secrets, ConfigMaps, and TokenReviews can contain sensitive & binary data,
+        # so only log at the Metadata level.
+        - level: Metadata
+          omitStages:
+            - RequestReceived
+          resources:
+            - group: ""
+              resources:
+                - secrets
+                - configmaps
+            - group: authentication.k8s.io
+              resources:
+                - tokenreviews
+        # Get repsonses can be large; skip them.
+        - level: Request
+          omitStages:
+            - RequestReceived
+          resources:
+            - group: ""
+            - group: admissionregistration.k8s.io
+            - group: apiextensions.k8s.io
+            - group: apiregistration.k8s.io
+            - group: apps
+            - group: authentication.k8s.io
+            - group: authorization.k8s.io
+            - group: autoscaling
+            - group: batch
+            - group: certificates.k8s.io
+            - group: extensions
+            - group: metrics.k8s.io
+            - group: networking.k8s.io
+            - group: policy
+            - group: rbac.authorization.k8s.io
+            - group: scheduling.k8s.io
+            - group: settings.k8s.io
+            - group: storage.k8s.io
+          verbs:
+            - get
+            - list
+            - watch
+
+        # Default level for known APIs
+        - level: RequestResponse
+          omitStages:
+            - RequestReceived
+          resources:
+            - group: ""
+            - group: admissionregistration.k8s.io
+            - group: apiextensions.k8s.io
+            - group: apiregistration.k8s.io
+            - group: apps
+            - group: authentication.k8s.io
+            - group: authorization.k8s.io
+            - group: autoscaling
+            - group: batch
+            - group: certificates.k8s.io
+            - group: extensions
+            - group: metrics.k8s.io
+            - group: networking.k8s.io
+            - group: policy
+            - group: rbac.authorization.k8s.io
+            - group: scheduling.k8s.io
+            - group: settings.k8s.io
+            - group: storage.k8s.io
+            
+        # Default level for all other requests.
+        - level: Metadata
+          omitStages:
+            - RequestReceived
+  api:
+    loadBalancer:
+      type: Public
+  authorization:
+    rbac: {}
+  channel: stable
+  cloudProvider: aws
+  configBase: ${KOPS_STATE_STORE}/${CLUSTER_NAME}
+  etcdClusters:
+  - cpuRequest: 200m
+    etcdMembers:
+    - encryptedVolume: true
+      instanceGroup: master-${REGION}a
+      name: a
+    - encryptedVolume: true
+      instanceGroup: master-${REGION}b
+      name: b
+    - encryptedVolume: true
+      instanceGroup: master-${REGION}c
+      name: c
+    memoryRequest: 100Mi
+    name: main
+    version: 3.2.24
+  - cpuRequest: 100m
+    etcdMembers:
+    - encryptedVolume: true
+      instanceGroup: master-${REGION}a
+      name: a
+    - encryptedVolume: true
+      instanceGroup: master-${REGION}b
+      name: b
+    - encryptedVolume: true
+      instanceGroup: master-${REGION}c
+      name: c
+    memoryRequest: 100Mi
+    name: events
+    version: 3.2.24
+  iam:
+    allowContainerRegistry: true
+    legacy: false
+  kubeDNS:
+    provider: CoreDNS
+  kubelet:
+    featureGates:
+      ExpandPersistentVolumes: "true"
+      PodPriority: "true"
+  kubernetesApiAccess:
+  - 0.0.0.0/0
+  kubernetesVersion: ${K8S_VERSION}
+  masterPublicName: api.${CLUSTER_NAME}
+  networkCIDR: ${CIDR}.0.0/16
+  networkID: ${VPC}
+  networking:
+    calico:
+      majorVersion: v3
+  nonMasqueradeCIDR: 100.64.0.0/10
+  sshAccess:
+  - 0.0.0.0/0
+  subnets:
+  - cidr: ${CIDR}.1.0/24
+    name: ${REGION}a
+    type: Private
+    zone: ${REGION}a
+  - cidr: ${CIDR}.2.0/24
+    name: ${REGION}b
+    type: Private
+    zone: ${REGION}b
+  - cidr: ${CIDR}.3.0/24
+    name: ${REGION}c
+    type: Private
+    zone: ${REGION}c
+  - cidr: ${CIDR}.101.0/24
+    name: utility-${REGION}a
+    type: Utility
+    zone: ${REGION}a
+  - cidr: ${CIDR}.102.0/24
+    name: utility-${REGION}b
+    type: Utility
+    zone: ${REGION}b
+  - cidr: ${CIDR}.103.0/24
+    name: utility-${REGION}c
+    type: Utility
+    zone: ${REGION}c
+  topology:
+    bastion:
+      bastionPublicName: bastion.${CLUSTER_NAME}
+    dns:
+      type: Private
+    masters: private
+    nodes: private
+
+---
+
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: ${CLUSTER_NAME}
+  name: master-${REGION}a
+spec:
+  image: kope.io/k8s-1.14-debian-stretch-amd64-hvm-ebs-2019-09-26
+  machineType: ${MASTER_SIZE}
+  maxSize: 1
+  minSize: 1
+  nodeLabels:
+    kops.k8s.io/instancegroup: master-${REGION}a
+  role: Master
+  rootVolumeSize: 50
+  subnets:
+  - ${REGION}a
+
+---
+
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: ${CLUSTER_NAME}
+  name: master-${REGION}b
+spec:
+  image: kope.io/k8s-1.14-debian-stretch-amd64-hvm-ebs-2019-09-26
+  machineType: ${MASTER_SIZE}
+  maxSize: 1
+  minSize: 1
+  nodeLabels:
+    kops.k8s.io/instancegroup: master-${REGION}b
+  role: Master
+  rootVolumeSize: 50
+  subnets:
+  - ${REGION}b
+
+---
+
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: ${CLUSTER_NAME}
+  name: master-${REGION}c
+spec:
+  image: kope.io/k8s-1.14-debian-stretch-amd64-hvm-ebs-2019-09-26
+  machineType: ${MASTER_SIZE}
+  maxSize: 1
+  minSize: 1
+  nodeLabels:
+    kops.k8s.io/instancegroup: master-${REGION}c
+  role: Master
+  rootVolumeSize: 50
+  subnets:
+  - ${REGION}c
+
+---
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: ${CLUSTER_NAME}
+    k8s.io/cluster-autoscaler/enabled: "true"
+  name: nodes-spot
+spec:
+  image: kope.io/k8s-1.14-debian-stretch-amd64-hvm-ebs-2019-09-26
+  machineType: ${NODE_SIZE}
+  maxPrice: "${MAX_PRICE}"
+  maxSize: 10
+  minSize: 0
+  nodeLabels:
+    kops.k8s.io/instancegroup: nodes
+  role: Node
+  rootVolumeSize: 50
+  subnets:
+  - ${REGION}a
+  - ${REGION}b
+  - ${REGION}c
+
+---
+
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: ${CLUSTER_NAME}
+    k8s.io/cluster-autoscaler/enabled: "true"
+  name: nodes
+spec:
+  image: kope.io/k8s-1.14-debian-stretch-amd64-hvm-ebs-2019-09-26
+  machineType: ${NODE_SIZE}
+  maxSize: ${MIN_NODES}
+  minSize: ${MAX_NODES}
+  nodeLabels:
+    kops.k8s.io/instancegroup: nodes
+  role: Node
+  rootVolumeSize: 50
+  subnets:
+  - ${REGION}a
+  - ${REGION}b
+  - ${REGION}c
+
+---
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: ${CLUSTER_NAME}
+  name: bastions
+spec:
+  image: kope.io/k8s-1.14-debian-stretch-amd64-hvm-ebs-2019-09-26
+  machineType: t2.micro
+  maxSize: 1
+  minSize: 1
+  nodeLabels:
+    kops.k8s.io/instancegroup: bastions
+  role: Bastion
+  subnets:
+  - utility-${REGION}a
+  - utility-${REGION}b
+  - utility-${REGION}c

@@ -1,0 +1,7 @@
+REGION="us-east-2"
+DOMAIN="yourdomain"
+DB_PASS="yourdbpass"
+MULTI_AZ="true"
+DELETION_PROTETION="true"
+INSTANCE_ELASTICACHE_SIZE="cache.t2.small"
+INSTANCE_RDS_SIZE="db.t2.small"

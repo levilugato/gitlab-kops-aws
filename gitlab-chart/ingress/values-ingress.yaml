@@ -1,0 +1,13 @@
+controller:
+  ingressClass: "nginx"
+#  scope:
+#    namespace: production
+  replicaCount: 6
+  minAvailable: 2 
+  resources: 
+    requests:
+      memory: "64Mi"
+      cpu: "250m"
+    limits:
+      memory: "128Mi"
+      cpu: "500m"
