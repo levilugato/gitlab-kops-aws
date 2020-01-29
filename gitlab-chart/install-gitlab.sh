@@ -132,8 +132,6 @@ helm upgrade --install --version 2.2.5 $NS gitlab/gitlab --namespace $NS --timeo
 #--set global.appConfig.omniauth.blockAutoCreatedUsers=true \
 #--set global.appConfig.omniauth.allowSingleSignOn[0]='google_oauth2' \
 #--set global.appConfig.omniauth.providers[0].secret=google-oauth2 \
-#--set global.ingress.annotations."custom\.nginx\.org/rate-limiting="on \
-#--set global.ingress.annotations."custom\.nginx\.org/rate-limiting-rate="90/s \
 
 
 
